@@ -40,6 +40,10 @@ auth.set_access_token(access_token, access_token_secret)
 api = tweepy.API(auth)
 bittrex_token = Bittrex(my_api_key, my_api_secret, api_version=bittrex_api_version)
 
+commission_percentage = 1.25
+percentage_change_to_trigger_sell = 5.0
+safe_buyorsell_percentage = 4.0
+
 def logger(msg):
     logfile.write(msg + '\n')
     print(msg)
@@ -100,7 +104,7 @@ def getCoinOfTheDay(tweet, cryptos):
 
 def getMarket(token, name):
     logger("Fetching market " + name)
-    results = bittrex_token.get_market_summaries()
+    results = token.get_market_summaries()
     if results['success'] != True:
         logger("FATAL ERROR : " + results['message'])
         return (None)
@@ -130,9 +134,9 @@ def getMarket(token, name):
     return (None)
 
 def allIn(token, market, btc_balance):
-    quantity = btc_balance / market['Ask']
-    commission = quantity * market['Ask'] * 1.25 / 100.0
-    logger ("Buying on " + market['MarketName'] + ", quantity = " + str(quantity) + ", price = " + str(market['Ask']) + ", commission = " + str(commission) + ", subtotal = " + str(quantity - commission))
+    quantity = btc_balance / (market['Ask'] + market['Ask'] * safe_buyorsell_percentage / 100.0)
+    commission = quantity * market['Ask'] * commission_percentage / 100.0
+    logger("Buying on " + market['MarketName'] + ", quantity = " + str(quantity) + ", price = " + str(market['Ask']) + ", commission = " + str(commission) + ", subtotal = " + str(quantity - commission))
     quantity -= commission
     #api 2.0 code, not used
     #buy = token.trade_buy(market=market['MarketName'], order_type='LIMIT', quantity=quantity, time_in_effect='GOOD_TIL_CANCELLED', rate=market['Ask'])
@@ -143,6 +147,42 @@ def allIn(token, market, btc_balance):
     for key in buy['result'].keys():
         logger(str(key) + ": " + str(buy['result'][key]))
     return (True)
+    
+def allOut(token, market, crypto_balance):
+    quantity = btc_balance / (market['Bid'] - market['Bid'] * safe_buyorsell_percentage / 100.0)
+    commission = quantity * market['Bid'] * commission_percentage / 100.0
+    logger("Selling on " + market['MarketName'] + ", quantity = " + str(quantity) + ", price = " + str(market['Bid']) + ", commission = " + str(commission) + ", subtotal = " + str(quantity - commission))
+    quantity -= commission
+    #api 2.0 code, not used
+    #sell = token.trade_sell(...)
+    sell = token.sell_limit(market['MaketName'], quantity, market['Bid'])
+    if sell['success'] != True:
+        logger("FATAL ERROR : " + sell['message'])
+        return (False)
+    for key in sell['result'].keys():
+        logger(str(key) + ": " + str(sell['result'][key]))
+    return (True)
+    
+def monitor(token, market, crypto):
+    max_price = 0.0
+    percent_change = 0.0
+    while True:
+        market = getMarket(token, market)
+        if market is None:
+            return False
+        if market['Last'] > max_price:
+            max_price = market['Last']
+        else:
+            percent_change = (1.0 - market['Last'] / max_price) * 100.0
+            if percent_change >= percentage_change_to_trigger_sell:
+                if not allOut(token, market, getBalance(token, crypto)):
+                    return False
+                else:
+                    return True
+                break
+        time.sleep(1)
+    return False
+            
     
 def getRich(tweet):
 #   Init
@@ -177,6 +217,12 @@ def getRich(tweet):
     if cotd_balance is None:
         return
     logger("You now have " + str(cotd_balance) + " " + str(cotd['Currency']) + " and " + str(btc_balance) + " BTC")
+    while True:
+        if monitor(token, market, cotd['Currency']) != True:
+            logger("Monitor failed, retrying")
+        else:
+            break
+        time.sleep(1)
 
 def main():
     global logfile_name
@@ -187,6 +233,7 @@ def main():
     print ("Starting program ! Current last tweet is " + lastTweet + ", waiting for new one")
     while True:
         tweet = api.user_timeline(screen_name = '@officialmcafee', count = 1, include_rts = False)[0].text.encode('utf-8')
+        tweet = "Coin of the day: burst"
         if tweet != lastTweet:
             lastTweet = tweet
             logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".txt")
