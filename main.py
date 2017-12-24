@@ -140,7 +140,8 @@ def allIn(token, market, btc_balance):
     if buy['success'] != True:
         logger("FATAL ERROR : " + buy['message'])
         return (False)
-    logger(buy['result'])
+    for key in buy['result'].keys()
+        logger(str(key) + ": " + str(buy['result'][key]))
     return (True)
     
 def getRich(tweet):
