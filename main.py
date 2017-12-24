@@ -9,7 +9,7 @@ import smtplib
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 import time
-from bittrex.bittrex import Bittrex, API_V2_0
+from bittrex.bittrex import Bittrex, API_V1_1
 
 # mail parameters
 server_login = ""
@@ -22,7 +22,7 @@ consumer_secret = ""
 access_token = ""
 access_token_secret = ""
 # bittrex parameters
-bittrex_api_version = API_V2_0
+bittrex_api_version = API_V1_1
 my_api_key = ""
 my_api_secret = ""
 # details
@@ -97,16 +97,21 @@ def getCoinOfTheDay(tweet, cryptos):
                 if word.lower() == crypto['Currency'].lower() or word.upper() == crypto['CurrencyLong'].upper():
                     return (crypto)
     return (None)
-    
+
 def getMarket(token, name):
     logger("Fetching market " + name)
     results = bittrex_token.get_market_summaries()
     if results['success'] != True:
         logger("FATAL ERROR : " + results['message'])
         return (None)
+    #api 2.0 code, not used
+    #for result in results['result']:
+    #    if result['Summary']['MarketName'] == name:
+    #        return (result['Summary'])
     for result in results['result']:
-        if result['Summary']['MarketName'] == name:
-            return (result['Summary'])
+        if result['MarketName'] == name:
+            return (result)
+#api 2.0 format, not used
 #   summary format
 #     'summary': {'PrevDay': 4.95e-06,
 #                'Volume': 447815716.2715876,
@@ -129,7 +134,9 @@ def allIn(token, market, btc_balance):
     commission = quantity * market['Ask'] * 1.25 / 100.0
     logger ("Buying on " + market['MarketName'] + ", quantity = " + str(quantity) + ", price = " + str(market['Ask']) + ", commission = " + str(commission) + ", subtotal = " + str(quantity - commission))
     quantity -= commission
-    buy = token.trade_buy(market=market['MarketName'], order_type='LIMIT', quantity=quantity, time_in_effect='GOOD_TIL_CANCELLED')
+    #api 2.0 code, not used
+    #buy = token.trade_buy(market=market['MarketName'], order_type='LIMIT', quantity=quantity, time_in_effect='GOOD_TIL_CANCELLED')
+    buy = token.buy_limit(market['MarketName'], quantity, 0.0)
     if buy['success'] != True:
         logger("FATAL ERROR : " + buy['message'])
         return (False)
@@ -151,10 +158,11 @@ def getRich(tweet):
         return
     btc_balance = getBalance(bittrex_token, "BTC")
     if btc_balance is None:
-        return
+        logger("You have no BTC :'(, aborting")
+        return (False)
     cotd_balance = getBalance(bittrex_token, cotd['Currency'])
     if cotd_balance is None:
-        return
+        cotd_balance = 0.0
     logger("You currently have " + str(cotd_balance) + " " + str(cotd['Currency']) + " and " + str(btc_balance) + " BTC")
     market = getMarket(bittrex_token, "BTC-" + cotd['Currency'])
     if market is None:
@@ -187,12 +195,13 @@ def main():
             if "Coin of the day" in tweet:
                 logger("OMFG It's actually about a new coin of the day !!111!! TIME TO GET RICH AF $$$")
                 getRich(tweet)
+                logger("Done")
             else:
                 logger("God McAfee isn't talking about shiny e-shekels :'(")
             logfile.close()
             with open(logfile_name, 'r') as message:
                 sendMail(message.read())
-        time.sleep(1)
+        time.sleep(10)
 
 if __name__ == '__main__':
     main()
