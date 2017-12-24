@@ -135,7 +135,7 @@ def allIn(token, market, btc_balance):
     logger ("Buying on " + market['MarketName'] + ", quantity = " + str(quantity) + ", price = " + str(market['Ask']) + ", commission = " + str(commission) + ", subtotal = " + str(quantity - commission))
     quantity -= commission
     #api 2.0 code, not used
-    #buy = token.trade_buy(market=market['MarketName'], order_type='LIMIT', quantity=quantity, time_in_effect='GOOD_TIL_CANCELLED')
+    #buy = token.trade_buy(market=market['MarketName'], order_type='LIMIT', quantity=quantity, time_in_effect='GOOD_TIL_CANCELLED', rate=market['Ask'])
     buy = token.buy_limit(market['MarketName'], quantity, market['Ask'])
     if buy['success'] != True:
         logger("FATAL ERROR : " + buy['message'])
@@ -183,10 +183,10 @@ def main():
     global logfile
     if not os.path.isdir(logfiles_location):
         os.mkdir(logfiles_location)
-    lastTweet = api.user_timeline(screen_name = '@officialmcafee', count = 1, include_rts = False)[0].text
+    lastTweet = api.user_timeline(screen_name = '@officialmcafee', count = 1, include_rts = False)[0].text.encode('utf-8')
     print ("Starting program ! Current last tweet is " + lastTweet + ", waiting for new one")
     while True:
-        tweet = api.user_timeline(screen_name = '@officialmcafee', count = 1, include_rts = False)[0].text
+        tweet = api.user_timeline(screen_name = '@officialmcafee', count = 1, include_rts = False)[0].text.encode('utf-8')
         if tweet != lastTweet:
             lastTweet = tweet
             logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".txt")
