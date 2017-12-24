@@ -22,9 +22,9 @@ consumer_secret = ""
 access_token = ""
 access_token_secret = ""
 # bittrex parameters
-bittrex_api_version = API_V1_1
 my_api_key = ""
 my_api_secret = ""
+bittrex_api_version = API_V1_1
 # details
 this_path = os.path.abspath(os.path.dirname(sys.argv[0]))
 logfiles_location = os.path.join(this_path, "logfiles/")
@@ -136,7 +136,7 @@ def allIn(token, market, btc_balance):
     quantity -= commission
     #api 2.0 code, not used
     #buy = token.trade_buy(market=market['MarketName'], order_type='LIMIT', quantity=quantity, time_in_effect='GOOD_TIL_CANCELLED')
-    buy = token.buy_limit(market['MarketName'], quantity, 0.0)
+    buy = token.buy_limit(market['MarketName'], quantity, market['Ask'])
     if buy['success'] != True:
         logger("FATAL ERROR : " + buy['message'])
         return (False)
