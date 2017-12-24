@@ -92,7 +92,7 @@ def main():
     if cotd_info == "":
         print("FATAL ERROR : Coin of the day is not tradeable")
         sys.exit()
-    print("You currently have " + str(getBalance(bittrex_token, "USDT")) + " " + str(cotd_info['BaseCurrency']))
+    print("You currently have " + str(getBalance(bittrex_token, cotd_info['BaseCurrency'])) + " " + str(cotd_info['BaseCurrency']))
     
 #    for crypto in cryptos:
 #        for key in crypto.keys():
