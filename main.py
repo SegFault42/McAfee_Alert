@@ -1,12 +1,14 @@
+#!/usr/bin/env python
+# -*- coding: utf8 -*-
 import requests
 import sys
 import tweepy
 import sys
 
-consumer_key = ""
-consumer_secret = ""
-access_token = ""
-access_token_secret = ""
+consumer_key = "LR3m9NtcR7YsDTc5uaxkAAKrv"
+consumer_secret = "LZ4BzhzqJxLzOhhVv5stXo4GaHgfpqCOyYhaV2XvuUdfMipM7B"
+access_token = "868192136830885889-2Nlk6pEBKHw6zYSYmr9W1YSZ2JGqrdl"
+access_token_secret = "HVDL4CX4NDOFMWr7NxXmSCeFIw02iRtgFAw9R0mpT4Cin"
 #twitter_account_sender = "" #without @
 #twitter_account_receiver = "" # without @
 
