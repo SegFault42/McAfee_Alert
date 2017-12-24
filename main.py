@@ -178,7 +178,6 @@ def main():
     print ("Starting program ! Current last tweet is " + lastTweet + ", waiting for new one")
     while True:
         tweet = api.user_timeline(screen_name = '@officialmcafee', count = 1, include_rts = False)[0].text
-        tweet = "Coin of the day: Burst"
         if tweet != lastTweet:
             lastTweet = tweet
             logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".txt")
