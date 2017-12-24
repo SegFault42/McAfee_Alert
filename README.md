@@ -1,5 +1,6 @@
 Json file format :
 
+```
 {
 	"comment": "Mail param"
 	"server_login": "",
@@ -18,5 +19,6 @@ Json file format :
 
 	"twitterAccount": "@officialmcafee"
 }
+```
 
 Json file must be named : config.json
