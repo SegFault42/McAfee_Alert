@@ -10,6 +10,9 @@ from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 import time
 from bittrex.bittrex import Bittrex, API_V1_1
+import json
+from pprint import pprint
+
 
 # mail parameters
 server_login = ""
@@ -30,15 +33,60 @@ this_path = os.path.abspath(os.path.dirname(sys.argv[0]))
 logfiles_location = os.path.join(this_path, "logfiles/")
 logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".txt")
 logfile = None
-
+# twitter account
+twitterAccount = ""
 
 server = smtplib.SMTP('smtp.gmail.com', 587)
-server.starttls()
-server.login(server_login, server_password)
-auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-auth.set_access_token(access_token, access_token_secret)
-api = tweepy.API(auth)
-bittrex_token = Bittrex(my_api_key, my_api_secret, api_version=bittrex_api_version)
+toAddr = ""
+fromAddr = ""
+
+
+
+
+
+def authMail(data):
+    global toAddr
+    global fromAddr
+    global server_login
+    global server_password
+    server_login = data["server_login"]
+    server_password = data["server_password"]
+    toAddr = data["toAddr"]
+    fromAddr = server_login
+    server.starttls()
+    server.login(server_login, server_password)
+
+def authTwitter(data):
+    global twitterAccount
+    global consumer_key
+    global consumer_secret
+    global access_token
+    global access_token_secret
+    consumer_key = data["consumer_key"]
+    consumer_secret = data["consumer_secret"]
+    access_token = data["access_token"]
+    access_token_secret = data["access_token_secret"]
+    twitterAccount = data["twitterAccount"]
+    auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+    auth.set_access_token(access_token, access_token_secret)
+    api = tweepy.API(auth)
+    return api
+
+def authBittrex(data):
+    global my_api_key
+    global my_api_secret
+    my_api_key = data["my_api_key"]
+    my_api_secret = data["my_api_secret"]
+    bittrex_token = Bittrex(my_api_key, my_api_secret, api_version=bittrex_api_version)
+    return bittrex_token
+
+#def parsingJson(data):
+
+    #authMail(data)
+    #authTwitter(data)
+    #authBittrex(data)
+
+    #print twitterAccount
 
 def logger(msg):
     logfile.write(msg + '\n')
@@ -50,6 +98,8 @@ def sendMail(message):
     msg['To'] = toAddr
     msg['Subject'] = "McAfee Alert !"
     msg.attach(MIMEText(message.encode('utf-8'), 'plain'))
+    print fromAddr
+    print toAddr
     server.sendmail(fromAddr, toAddr, msg.as_string())
     server.quit()
 
@@ -98,7 +148,7 @@ def getCoinOfTheDay(tweet, cryptos):
                     return (crypto)
     return (None)
 
-def getMarket(token, name):
+def getMarket(token, name, bittrex_token):
     logger("Fetching market " + name)
     results = bittrex_token.get_market_summaries()
     if results['success'] != True:
@@ -144,7 +194,7 @@ def allIn(token, market, btc_balance):
         logger(str(key) + ": " + str(buy['result'][key]))
     return (True)
     
-def getRich(tweet):
+def getRich(tweet, bittrex_token):
 #   Init
     cryptos = getCryptos(bittrex_token) 
     cotd = getCoinOfTheDay(tweet, cryptos)
@@ -161,11 +211,12 @@ def getRich(tweet):
     if btc_balance is None:
         logger("You have no BTC :'(, aborting")
         return (False)
+    #btc_balance = 0.1
     cotd_balance = getBalance(bittrex_token, cotd['Currency'])
     if cotd_balance is None:
         cotd_balance = 0.0
     logger("You currently have " + str(cotd_balance) + " " + str(cotd['Currency']) + " and " + str(btc_balance) + " BTC")
-    market = getMarket(bittrex_token, "BTC-" + cotd['Currency'])
+    market = getMarket(bittrex_token, "BTC-" + cotd['Currency'], bittrex_token)
     if market is None:
         return
     if allIn(bittrex_token, market, btc_balance) != True:
@@ -183,26 +234,32 @@ def main():
     global logfile
     if not os.path.isdir(logfiles_location):
         os.mkdir(logfiles_location)
-    lastTweet = api.user_timeline(screen_name = '@officialmcafee', count = 1, include_rts = False)[0].text.encode('utf-8')
-    print ("Starting program ! Current last tweet is " + lastTweet + ", waiting for new one")
+    #parsingJson()
+    data = json.load(open('config.json'))
+    authMail(data)
+    api = authTwitter(data)
+    bittrex_token = authBittrex(data)
+    lastTweet = api.user_timeline(screen_name = twitterAccount, count = 1, include_rts = False)[0].text.encode('utf-8')
+    print ("Starting program !\nCurrent last tweet is : " + "\033[32m" + lastTweet + "\033[0m" + "\nWaiting for new one")
     while True:
-        tweet = api.user_timeline(screen_name = '@officialmcafee', count = 1, include_rts = False)[0].text.encode('utf-8')
+        tweet = api.user_timeline(screen_name = twitterAccount, count = 1, include_rts = False)[0].text.encode('utf-8')
         if tweet != lastTweet:
             lastTweet = tweet
             logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".txt")
             logfile = open(logfile_name, 'wb')
             logger("Holy shit new tweet from god McAfee !!!11!1!")
             logger(" It says : " + str(tweet))
-            if "Coin of the day" in tweet:
+            if "coin of the day" in tweet.lower():
                 logger("OMFG It's actually about a new coin of the day !!111!! TIME TO GET RICH AF $$$")
-                getRich(tweet)
+                getRich(tweet, bittrex_token)
                 logger("Done")
             else:
                 logger("God McAfee isn't talking about shiny e-shekels :'(")
             logfile.close()
-            with open(logfile_name, 'r') as message:
-                sendMail(message.read())
-        time.sleep(10)
+            if "Coin of the day" in tweet:
+                with open(logfile_name, 'r') as message:
+                    sendMail(message.read())
+        time.sleep(1)
 
 if __name__ == '__main__':
     main()
