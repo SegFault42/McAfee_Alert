@@ -18,6 +18,8 @@ Json file format :
 	"my_api_secret": "",
 
 	"twitterAccount": "@officialmcafee"
+	"twitterAccountReceiver": "@Your_twitter _account"
+
 }
 ```
 
