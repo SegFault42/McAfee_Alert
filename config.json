@@ -1,5 +1,3 @@
-Json file format :
-
 {
 	"comment": "Mail param",
 	"server_login": "",
@@ -17,7 +15,5 @@ Json file format :
 	"my_api_secret": "",
 
 	"twitterAccount": "@officialmcafee",
-	"twitterAccountReceiver": "@Your_twitter _account"
+	"twitterAccountReceiver": ""
 }
-
-Json file must be named : config.json
