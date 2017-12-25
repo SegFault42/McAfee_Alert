@@ -1,0 +1,4 @@
+*.pyc
+secrets.json
+nohup.out
+logfiles
