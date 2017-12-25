@@ -209,7 +209,7 @@ def monitor(token, market, crypto):
     max_price = 0.0
     percent_change = 0.0
     while True:
-        market = getMarket(token, market)
+        market = getMarket(token, market['MarketName'])
         if market is None:
             return False
         if market['Last'] > max_price:
