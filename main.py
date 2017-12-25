@@ -11,13 +11,11 @@ from email.MIMEText import MIMEText
 import time
 from bittrex.bittrex import Bittrex, API_V1_1
 import json
-from pprint import pprint
-
 
 # mail parameters
 server_login = ""
 server_password = ""
-fromAddr = server_login
+fromAddr = ""
 toAddr = ""
 # twitter parameters
 consumer_key = ""
@@ -33,16 +31,15 @@ this_path = os.path.abspath(os.path.dirname(sys.argv[0]))
 logfiles_location = os.path.join(this_path, "logfiles/")
 logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".txt")
 logfile = None
-# twitter account
 twitterAccount = ""
+twitterAccountReceiver = ""
+
 
 server = smtplib.SMTP('smtp.gmail.com', 587)
-toAddr = ""
-fromAddr = ""
 
-
-
-
+commission_percentage = 1.25
+percentage_change_to_trigger_sell = 5.0
+safe_buyorsell_percentage = 4.0
 
 def authMail(data):
     global toAddr
@@ -58,6 +55,7 @@ def authMail(data):
 
 def authTwitter(data):
     global twitterAccount
+    global twitterAccountReceiver
     global consumer_key
     global consumer_secret
     global access_token
@@ -67,6 +65,7 @@ def authTwitter(data):
     access_token = data["access_token"]
     access_token_secret = data["access_token_secret"]
     twitterAccount = data["twitterAccount"]
+    twitterAccountReceiver = data["twitterAccountReceiver"]
     auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
     auth.set_access_token(access_token, access_token_secret)
     api = tweepy.API(auth)
@@ -80,14 +79,6 @@ def authBittrex(data):
     bittrex_token = Bittrex(my_api_key, my_api_secret, api_version=bittrex_api_version)
     return bittrex_token
 
-#def parsingJson(data):
-
-    #authMail(data)
-    #authTwitter(data)
-    #authBittrex(data)
-
-    #print twitterAccount
-
 def logger(msg):
     logfile.write(msg + '\n')
     print(msg)
@@ -98,10 +89,15 @@ def sendMail(message):
     msg['To'] = toAddr
     msg['Subject'] = "McAfee Alert !"
     msg.attach(MIMEText(message.encode('utf-8'), 'plain'))
-    print fromAddr
-    print toAddr
     server.sendmail(fromAddr, toAddr, msg.as_string())
     server.quit()
+
+def tweetAlert(api):
+    tweet = twitterAccountReceiver + "\n" + ''.join("McAfee Alert !!")
+    try:
+        api.update_status(status=tweet)
+    except:
+        pass
 
 def getCryptos(token):
     currencies = token.get_currencies()
@@ -148,9 +144,9 @@ def getCoinOfTheDay(tweet, cryptos):
                     return (crypto)
     return (None)
 
-def getMarket(token, name, bittrex_token):
+def getMarket(token, name):
     logger("Fetching market " + name)
-    results = bittrex_token.get_market_summaries()
+    results = token.get_market_summaries()
     if results['success'] != True:
         logger("FATAL ERROR : " + results['message'])
         return (None)
@@ -180,9 +176,9 @@ def getMarket(token, name, bittrex_token):
     return (None)
 
 def allIn(token, market, btc_balance):
-    quantity = btc_balance / market['Ask']
-    commission = quantity * market['Ask'] * 1.25 / 100.0
-    logger ("Buying on " + market['MarketName'] + ", quantity = " + str(quantity) + ", price = " + str(market['Ask']) + ", commission = " + str(commission) + ", subtotal = " + str(quantity - commission))
+    quantity = btc_balance / (market['Ask'] + market['Ask'] * safe_buyorsell_percentage / 100.0)
+    commission = quantity * market['Ask'] * commission_percentage / 100.0
+    logger("Buying on " + market['MarketName'] + ", quantity = " + str(quantity) + ", price = " + str(market['Ask']) + ", commission = " + str(commission) + ", subtotal = " + str(quantity - commission))
     quantity -= commission
     #api 2.0 code, not used
     #buy = token.trade_buy(market=market['MarketName'], order_type='LIMIT', quantity=quantity, time_in_effect='GOOD_TIL_CANCELLED', rate=market['Ask'])
@@ -194,9 +190,45 @@ def allIn(token, market, btc_balance):
         logger(str(key) + ": " + str(buy['result'][key]))
     return (True)
     
+def allOut(token, market, crypto_balance):
+    quantity = btc_balance / (market['Bid'] - market['Bid'] * safe_buyorsell_percentage / 100.0)
+    commission = quantity * market['Bid'] * commission_percentage / 100.0
+    logger("Selling on " + market['MarketName'] + ", quantity = " + str(quantity) + ", price = " + str(market['Bid']) + ", commission = " + str(commission) + ", subtotal = " + str(quantity - commission))
+    quantity -= commission
+    #api 2.0 code, not used
+    #sell = token.trade_sell(...)
+    sell = token.sell_limit(market['MaketName'], quantity, market['Bid'])
+    if sell['success'] != True:
+        logger("FATAL ERROR : " + sell['message'])
+        return (False)
+    for key in sell['result'].keys():
+        logger(str(key) + ": " + str(sell['result'][key]))
+    return (True)
+    
+def monitor(token, market, crypto):
+    max_price = 0.0
+    percent_change = 0.0
+    while True:
+        market = getMarket(token, market)
+        if market is None:
+            return False
+        if market['Last'] > max_price:
+            max_price = market['Last']
+        else:
+            percent_change = (1.0 - market['Last'] / max_price) * 100.0
+            if percent_change >= percentage_change_to_trigger_sell:
+                if not allOut(token, market, getBalance(token, crypto)):
+                    return False
+                else:
+                    return True
+                break
+        time.sleep(1)
+    return False
+            
+    
 def getRich(tweet, bittrex_token):
 #   Init
-    cryptos = getCryptos(bittrex_token) 
+    cryptos = getCryptos(bittrex_token)
     cotd = getCoinOfTheDay(tweet, cryptos)
     btc_balance = 0.0
     market = ""
@@ -211,12 +243,11 @@ def getRich(tweet, bittrex_token):
     if btc_balance is None:
         logger("You have no BTC :'(, aborting")
         return (False)
-    #btc_balance = 0.1
     cotd_balance = getBalance(bittrex_token, cotd['Currency'])
     if cotd_balance is None:
         cotd_balance = 0.0
     logger("You currently have " + str(cotd_balance) + " " + str(cotd['Currency']) + " and " + str(btc_balance) + " BTC")
-    market = getMarket(bittrex_token, "BTC-" + cotd['Currency'], bittrex_token)
+    market = getMarket(bittrex_token, "BTC-" + cotd['Currency'])
     if market is None:
         return
     if allIn(bittrex_token, market, btc_balance) != True:
@@ -228,21 +259,27 @@ def getRich(tweet, bittrex_token):
     if cotd_balance is None:
         return
     logger("You now have " + str(cotd_balance) + " " + str(cotd['Currency']) + " and " + str(btc_balance) + " BTC")
+    while True:
+        if monitor(token, market, cotd['Currency']) != True:
+            logger("Monitor failed, retrying")
+        else:
+            break
+        time.sleep(1)
 
 def main():
     global logfile_name
     global logfile
     if not os.path.isdir(logfiles_location):
         os.mkdir(logfiles_location)
-    #parsingJson()
     data = json.load(open('config.json'))
     authMail(data)
     api = authTwitter(data)
     bittrex_token = authBittrex(data)
     lastTweet = api.user_timeline(screen_name = twitterAccount, count = 1, include_rts = False)[0].text.encode('utf-8')
-    print ("Starting program !\nCurrent last tweet is : " + "\033[32m" + lastTweet + "\033[0m" + "\nWaiting for new one")
+    print ("Starting program ! Current last tweet is " + lastTweet + ", waiting for new one")
     while True:
         tweet = api.user_timeline(screen_name = twitterAccount, count = 1, include_rts = False)[0].text.encode('utf-8')
+        #tweet = "Coin of the day: burst"
         if tweet != lastTweet:
             lastTweet = tweet
             logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".txt")
@@ -256,9 +293,10 @@ def main():
             else:
                 logger("God McAfee isn't talking about shiny e-shekels :'(")
             logfile.close()
-            if "Coin of the day" in tweet:
-                with open(logfile_name, 'r') as message:
-                    sendMail(message.read())
+            if "coin of the day" in tweet.lower():
+                tweetAlert(api)
+            #with open(logfile_name, 'r') as message:
+                #sendMail(message.read())
         time.sleep(1)
 
 if __name__ == '__main__':
