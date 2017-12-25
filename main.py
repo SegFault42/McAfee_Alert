@@ -189,7 +189,7 @@ def allIn(token, market, btc_balance):
     for key in buy['result'].keys():
         logger(str(key) + ": " + str(buy['result'][key]))
     return (True)
-    
+
 def allOut(token, market, crypto_balance):
     quantity = btc_balance / (market['Bid'] - market['Bid'] * safe_buyorsell_percentage / 100.0)
     commission = quantity * market['Bid'] * commission_percentage / 100.0
@@ -204,7 +204,7 @@ def allOut(token, market, crypto_balance):
     for key in sell['result'].keys():
         logger(str(key) + ": " + str(sell['result'][key]))
     return (True)
-    
+
 def monitor(token, market, crypto):
     max_price = 0.0
     percent_change = 0.0
@@ -260,7 +260,7 @@ def getRich(tweet, bittrex_token):
         return
     logger("You now have " + str(cotd_balance) + " " + str(cotd['Currency']) + " and " + str(btc_balance) + " BTC")
     while True:
-        if monitor(token, market, cotd['Currency']) != True:
+        if monitor(bittrex_token, market, cotd['Currency']) != True:
             logger("Monitor failed, retrying")
         else:
             break
