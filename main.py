@@ -250,9 +250,11 @@ def main():
             else:
                 logger("God McAfee isn't talking about shiny e-shekels :'(")
             logfile.close()
-            with open(logfile_name, 'r') as message:
-                sendMail(message.read())
-            sys.exit()
+            try:
+                with open(logfile_name, 'r') as message:
+                    sendMail(message.read())
+            except:
+                print("Failed to send mail !")
         time.sleep(10)
 
 if __name__ == '__main__':
