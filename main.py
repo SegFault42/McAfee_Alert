@@ -31,6 +31,8 @@ logfiles_location = os.path.join(this_path, "logfiles/")
 logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".txt")
 logfile = None
 
+max_amout_to_spend = 0.0
+
 
 server = smtplib.SMTP('smtp.gmail.com', 587)
 server.starttls()
@@ -134,6 +136,8 @@ def getMarket(token, name):
     return (None)
 
 def allIn(token, market, btc_balance):
+    if max_amount_to_spend != 0.0 and btc_balance > max_amout_to_spend:
+        btc_balance = max_amount_to_spend
     quantity = btc_balance / (market['Ask'] + market['Ask'] * safe_buyorsell_percentage / 100.0)
     commission = quantity * market['Ask'] * commission_percentage / 100.0
     logger("Buying on " + market['MarketName'] + ", quantity = " + str(quantity) + ", price = " + str(market['Ask']) + ", commission = " + str(commission) + ", subtotal = " + str(quantity - commission))
@@ -167,7 +171,7 @@ def monitor(token, market, crypto):
     max_price = 0.0
     percent_change = 0.0
     while True:
-        market = getMarket(token, market)
+        market = getMarket(token, market['MarketName'])
         if market is None:
             return False
         if market['Last'] > max_price:
@@ -233,7 +237,6 @@ def main():
     print ("Starting program ! Current last tweet is " + lastTweet + ", waiting for new one")
     while True:
         tweet = api.user_timeline(screen_name = '@officialmcafee', count = 1, include_rts = False)[0].text.encode('utf-8')
-        tweet = "Coin of the day: burst"
         if tweet != lastTweet:
             lastTweet = tweet
             logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".txt")
@@ -249,6 +252,7 @@ def main():
             logfile.close()
             with open(logfile_name, 'r') as message:
                 sendMail(message.read())
+            sys.exit()
         time.sleep(10)
 
 if __name__ == '__main__':
