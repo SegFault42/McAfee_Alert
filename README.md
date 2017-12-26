@@ -1,5 +1,7 @@
 Json file format :
 
+
+
 {
 	"comment": "Mail param",
 	"server_login": "",
@@ -21,3 +23,5 @@ Json file format :
 }
 
 Json file must be named : config.json
+
+sudo pip install -r requirement
