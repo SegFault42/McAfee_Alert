@@ -3,6 +3,7 @@ Json file format :
 
 
 {
+
 	"comment": "Mail param",
 	"server_login": "",
 	"server_password": "",
