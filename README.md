@@ -1,9 +1,8 @@
 Json file format :
 
 
-
+```
 {
-
 	"comment": "Mail param",
 	"server_login": "",
 	"server_password": "",
@@ -22,7 +21,7 @@ Json file format :
 	"twitterAccount": "@officialmcafee",
 	"twitterAccountReceiver": "@Your_twitter _account"
 }
-
+```
 Json file must be named : config.json
 
 sudo pip install -r requirement
