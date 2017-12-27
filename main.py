@@ -11,6 +11,10 @@ from email.MIMEText import MIMEText
 import time
 from bittrex.bittrex import Bittrex, API_V1_1
 import json
+import cv2
+import numpy as np
+import pytesseract
+from PIL import Image
 
 # mail parameters
 server_login = ""
@@ -33,6 +37,8 @@ logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".
 logfile = None
 twitterAccount = ""
 twitterAccountReceiver = ""
+
+src_path = "/home/segfault42/Desktop/"
 
 
 server = smtplib.SMTP('smtp.gmail.com', 587)
@@ -209,7 +215,7 @@ def monitor(token, market, crypto):
     max_price = 0.0
     percent_change = 0.0
     while True:
-        market = getMarket(token, market)
+        market = getMarket(token, market['MarketName'])
         if market is None:
             return False
         if market['Last'] > max_price:
@@ -266,38 +272,50 @@ def getRich(tweet, bittrex_token):
             break
         time.sleep(1)
 
+def get_string(img_path):
+    img = cv2.imread(img_path)
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    kernel = np.ones((1, 1), np.uint8)
+    img = cv2.dilate(img, kernel, iterations=1)
+    img = cv2.erode(img, kernel, iterations=1)
+    cv2.imwrite(src_path + "removed_noise.png", img)
+    cv2.imwrite(src_path + "thres.png", img)
+    result = pytesseract.image_to_string(Image.open(src_path + "thres.png"))
+    return result
+
 def main():
     global logfile_name
     global logfile
     if not os.path.isdir(logfiles_location):
         os.mkdir(logfiles_location)
     data = json.load(open('config.json'))
-    authMail(data)
-    api = authTwitter(data)
-    bittrex_token = authBittrex(data)
-    lastTweet = api.user_timeline(screen_name = twitterAccount, count = 1, include_rts = False)[0].text.encode('utf-8')
-    print ("Starting program ! Current last tweet is " + lastTweet + ", waiting for new one")
-    while True:
-        tweet = api.user_timeline(screen_name = twitterAccount, count = 1, include_rts = False)[0].text.encode('utf-8')
-        #tweet = "Coin of the day: burst"
-        if tweet != lastTweet:
-            lastTweet = tweet
-            logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".txt")
-            logfile = open(logfile_name, 'wb')
-            logger("Holy shit new tweet from god McAfee !!!11!1!")
-            logger(" It says : " + str(tweet))
-            if "coin of the day" in tweet.lower():
-                logger("OMFG It's actually about a new coin of the day !!111!! TIME TO GET RICH AF $$$")
-                getRich(tweet, bittrex_token)
-                logger("Done")
-            else:
-                logger("God McAfee isn't talking about shiny e-shekels :'(")
-            logfile.close()
-            if "coin of the day" in tweet.lower():
-                tweetAlert(api)
-            #with open(logfile_name, 'r') as message:
-                #sendMail(message.read())
-        time.sleep(1)
+    print get_string(src_path + "image.jpeg")
+    #authMail(data)
+    #api = authTwitter(data)
+    #bittrex_token = authBittrex(data)
+    #lastTweet = api.user_timeline(screen_name = twitterAccount, count = 1, include_rts = False)[0].text.encode('utf-8')
+    #print ("Starting program ! Current last tweet is " + lastTweet + ", waiting for new one")
+    #while True:
+        #tweet = api.user_timeline(screen_name = twitterAccount, count = 1, include_rts = False)[0].text.encode('utf-8')
+        ##tweet = "Coin of the day: burst"
+        #if tweet != lastTweet:
+            #lastTweet = tweet
+            #logfile_name = os.path.join(logfiles_location, "LOG_" + str(datetime.now()) + ".txt")
+            #logfile = open(logfile_name, 'wb')
+            #logger("Holy shit new tweet from god McAfee !!!11!1!")
+            #logger(" It says : " + str(tweet))
+            #if "coin of the week" in tweet.lower():
+                #logger("OMFG It's actually about a new coin of the week !!111!! TIME TO GET RICH AF $$$")
+                #getRich(tweet, bittrex_token)
+                #logger("Done")
+            #else:
+                #logger("God McAfee isn't talking about shiny e-shekels :'(")
+            #logfile.close()
+            #if "coin of the week" in tweet.lower():
+                #tweetAlert(api)
+            ##with open(logfile_name, 'r') as message:
+                ##sendMail(message.read())
+        #time.sleep(2)
 
 if __name__ == '__main__':
     main()
