@@ -15,6 +15,10 @@ import cv2
 import numpy as np
 import pytesseract
 from PIL import Image
+import tempfile
+import subprocess
+import re
+import wget
 
 # mail parameters
 server_login = ""
@@ -38,7 +42,7 @@ logfile = None
 twitterAccount = ""
 twitterAccountReceiver = ""
 
-src_path = "/home/segfault42/Desktop/"
+src_path = "/tmp/"
 
 
 server = smtplib.SMTP('smtp.gmail.com', 587)
@@ -272,16 +276,19 @@ def getRich(tweet, bittrex_token):
             break
         time.sleep(1)
 
-def get_string(img_path):
-    img = cv2.imread(img_path)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    kernel = np.ones((1, 1), np.uint8)
-    img = cv2.dilate(img, kernel, iterations=1)
-    img = cv2.erode(img, kernel, iterations=1)
-    cv2.imwrite(src_path + "removed_noise.png", img)
-    cv2.imwrite(src_path + "thres.png", img)
-    result = pytesseract.image_to_string(Image.open(src_path + "thres.png"))
-    return result
+def get_string(path):
+    temp = tempfile.NamedTemporaryFile(delete=False)
+    process = subprocess.Popen(['tesseract', path, temp.name], stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    process.communicate()
+    with open(temp.name + '.txt', 'r') as handle:
+        contents = handle.read()
+    os.remove(temp.name + '.txt')
+    os.remove(temp.name)
+    return contents
+
+def getUrlFromTweet(tweet):
+    url = re.findall('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', tweet)
+    return url
 
 def main():
     global logfile_name
@@ -289,9 +296,20 @@ def main():
     if not os.path.isdir(logfiles_location):
         os.mkdir(logfiles_location)
     data = json.load(open('config.json'))
-    print get_string(src_path + "image.jpeg")
-    #authMail(data)
-    #api = authTwitter(data)
+    #print get_string(src_path + "image.jpeg")
+    authMail(data)
+    api = authTwitter(data)
+    lastTweet = api.user_timeline(screen_name = twitterAccount, count = 1, include_rts = False)#[0].text.encode('utf-8')
+    #print lastTweet
+    #url = getUrlFromTweet(lastTweet)
+    #print url
+
+    tweetJson = lastTweet[0]._json
+    json.dumps(tweetJson, indent = 2)
+    imgUrl = tweetJson['extended_entities']['media'][0]['media_url']
+
+    wget.download(imgUrl)
+
     #bittrex_token = authBittrex(data)
     #lastTweet = api.user_timeline(screen_name = twitterAccount, count = 1, include_rts = False)[0].text.encode('utf-8')
     #print ("Starting program ! Current last tweet is " + lastTweet + ", waiting for new one")
