@@ -35,4 +35,5 @@ Json file must be named : config.json
 sudo pip install -r requirement
 
 sudo apt-get install python-opencv
+
 sudo apt-get install tesseract-ocr
