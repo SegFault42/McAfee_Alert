@@ -1,68 +1,58 @@
 # -*- coding: utf8 -*-
 
 import parseJson
-import auth
 import tweepy
-import parseJson as data
 import json
-import wget
-import image
-from bittrex.bittrex import Bittrex
+from bittrex.bittrex import Bittrex, API_V1_1
 import os
 import sys
 import re
 import time
+from termcolor import colored
+
+import auth
+import image
+import parseJson as data
+import coinOfTheWeek as cotw
+import rich
 
 reload(sys)
 sys.setdefaultencoding('utf8')
-
-def downloadImageFromTweet(apiTwitter):
-    try:
-        lastTweet = apiTwitter.user_timeline(screen_name = data.dataTwitter['twitterAccount'], count = 1, include_rts = False)
-    except:
-        print "Failing to get last tweet"
-        return False
-    #print lastTweet
-    #print json.dumps(lastTweet[0]._json, indent = 2)
-    imgUrl = lastTweet[0]._json['extended_entities']['media'][0]['media_url']
-    imageName = wget.download(imgUrl)
-    print ""
-    return imageName
-
-def seekCurrencie(content, allCurrencys):
-    word = content.split(' ')
-    i = 0
-    j = 0
-    while i < len(allCurrencys['result']):
-        j = 0
-        while j < len(word):
-            if word[j] == allCurrencys['result'][i]['MarketCurrency'].lower():
-                return allCurrencys['result'][i]['MarketCurrency']
-            elif word[j] == allCurrencys['result'][i]['MarketCurrencyLong'].lower():
-                return allCurrencys['result'][i]['MarketCurrencyLong']
-            j += 1
-        i += 1
-    return 0
-
-def epurContent(imageContent):
-    imageContent = re.sub('[^a-zA-Z]+', ' ', imageContent)
-    return imageContent.lower()
+bittrex_api_version = API_V1_1
 
 def main():
     parseJson.parseSecret()
     apiTwitter = auth.authentification()
-    imageName = downloadImageFromTweet(apiTwitter)
-    imageContent = image.imageToStr(imageName)
-    os.remove(imageName)
 
-    mybittrex = Bittrex(data.dataBittrex['my_api_key'], data.dataBittrex['my_api_secret'])
-    #print json.dumps(mybittrex.get_markets(), indent = 4)
-
-    imageContent = epurContent(imageContent)
-
-    allCurrencys = mybittrex.get_markets()
-    coinOfTheWeek =  seekCurrencie(imageContent, allCurrencys)
-    print coinOfTheWeek
+    while True:
+        try:
+            lastTweetFirst = apiTwitter.user_timeline(screen_name = data.dataTwitter['twitterAccount'], count = 1, include_rts = False)[0].text
+        except:
+            print colored('Getting last tweet error', 'red')
+            time.sleep(3)
+            continue
+        break
+    while True:
+        try:
+            lastTweet = apiTwitter.user_timeline(screen_name = data.dataTwitter['twitterAccount'], count = 1, include_rts = False)
+        except:
+            print colored('Getting last tweet error', 'red')
+            time.sleep(3)
+            continue
+        if lastTweet[0].text != lastTweetFirst and 'coin of the week' in lastTweet[0].text.lower():
+            lastTweetFirst = lastTweet[0].text
+            print colored('New tweet about coin of the week !!!', 'red')
+            mybittrex = Bittrex(data.dataBittrex['my_api_key'], data.dataBittrex['my_api_secret'], api_version=bittrex_api_version)
+            coinOfTheWeek = cotw.getCoinOfTheWeek(apiTwitter, mybittrex, lastTweet)
+    #coinOfTheWeek = "ETH"
+            if coinOfTheWeek == False:
+                print colored('Coin not available in Bittrex :(', 'magenta')
+                continue
+            print colored(coinOfTheWeek, 'magenta')
+            rich.getRich(coinOfTheWeek, mybittrex)
+        else:
+            print colored('Current tweet : ', 'green'), colored (lastTweet[0].text, 'yellow'), colored('\nWaiting for new tweet', 'green')
+        time.sleep(3)
 
 
 if __name__ == '__main__':

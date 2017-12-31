@@ -6,3 +6,4 @@ tesseract
 pillow
 opencv-pythonfg
 numpy
+termcolor
