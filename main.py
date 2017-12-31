@@ -9,9 +9,11 @@ import wget
 import image
 from bittrex.bittrex import Bittrex
 import os
-import sys  
+import sys
+import re
+import time
 
-reload(sys)  
+reload(sys)
 sys.setdefaultencoding('utf8')
 
 def downloadImageFromTweet(apiTwitter):
@@ -28,22 +30,23 @@ def downloadImageFromTweet(apiTwitter):
     return imageName
 
 def seekCurrencie(content, allCurrencys):
-    content = content.replace('\n', ' ')
     word = content.split(' ')
     i = 0
     j = 0
     while i < len(allCurrencys['result']):
         j = 0
         while j < len(word):
-            print "word[j] = " + word[j] + '\n' + "Currency = " + allCurrencys['result'][i]['MarketCurrency']
-            word[j] = word[j].lower()
-            allCurrencys['result'][i]['MarketCurrency'] = allCurrencys['result'][i]['MarketCurrency'].lower()
-
-            if (word[j].find(allCurrencys['result'][i]['MarketCurrency']) != -1):
+            if word[j] == allCurrencys['result'][i]['MarketCurrency'].lower():
                 return allCurrencys['result'][i]['MarketCurrency']
+            elif word[j] == allCurrencys['result'][i]['MarketCurrencyLong'].lower():
+                return allCurrencys['result'][i]['MarketCurrencyLong']
             j += 1
         i += 1
     return 0
+
+def epurContent(imageContent):
+    imageContent = re.sub('[^a-zA-Z]+', ' ', imageContent)
+    return imageContent.lower()
 
 def main():
     parseJson.parseSecret()
@@ -54,8 +57,12 @@ def main():
 
     mybittrex = Bittrex(data.dataBittrex['my_api_key'], data.dataBittrex['my_api_secret'])
     #print json.dumps(mybittrex.get_markets(), indent = 4)
+
+    imageContent = epurContent(imageContent)
+
     allCurrencys = mybittrex.get_markets()
-    print seekCurrencie(imageContent, allCurrencys)
+    coinOfTheWeek =  seekCurrencie(imageContent, allCurrencys)
+    print coinOfTheWeek
 
 
 if __name__ == '__main__':
