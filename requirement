@@ -1,3 +1,9 @@
 requests==2.9.1
 tweepy==3.5.0
 python-bittrex
+pytesseract
+tesseract
+pillow
+opencv-pythonfg
+numpy
+termcolor
