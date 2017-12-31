@@ -3,8 +3,8 @@ Use at your own risk !
 
 Json file format :
 
-```
 
+```
 {
 	"Mail param":
 	{
@@ -30,7 +30,6 @@ Json file format :
 		}
 }
 ```
-
 Json file must be named : config.json
 
 sudo pip install -r requirement
