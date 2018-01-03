@@ -20,7 +20,6 @@ import wget
 import image
 from termcolor import colored
 
-
 commission_percentage = 1.25
 safe_buyorsell_percentage = 4.0
 percentage_change_to_trigger_sell = 5.0
