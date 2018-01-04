@@ -33,6 +33,8 @@ def downloadImageFromTweet(apiTwitter, lastTweet):
     return imageName
 
 def getCoinOfTheWeek(apiTwitter, mybittrex, lastTweet):
+    if len(lastTweet[0]._json['entities']) == 4:
+        return 2
     imageName = downloadImageFromTweet(apiTwitter, lastTweet)
     if imageName == False:
         return False
