@@ -1,12 +1,4 @@
 {
-    "Mail param":
-    {
-		"server_login": "",
-		"server_password": "",
-		"toAddr": "",
-		"fromAddr": "",
-		"useMail": "True"
-    },
 	"Twitter param":
     {
 		"consumer_key": "",

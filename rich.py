@@ -20,109 +20,69 @@ import wget
 import image
 from termcolor import colored
 
-commission_percentage = 1.25
-safe_buyorsell_percentage = 4.0
-percentage_change_to_trigger_sell = 5.0
+fee = 0.25
+percentBuySecure = 10
 
-def monitor(token, market, crypto):
-    max_price = 0.0
-    percent_change = 0.0
-    while True:
-        market = getMarket(token, market['MarketName'])
-        if market is None:
-            return False
-        if market['Last'] > max_price:
-            max_price = market['Last']
-        else:
-            percent_change = (1.0 - market['Last'] / max_price) * 100.0
-            if percent_change >= percentage_change_to_trigger_sell:
-                if not allOut(token, market, getBalance(token, crypto)):
-                    return False
-                else:
-                    return True
-                break
-        time.sleep(1)
+def checkAvailableCoin(bittrexApi, coin):
+    balances = bittrexApi.get_balances()
+    for coinLoop in balances['result']:
+        if coinLoop['Currency'] == coin:
+            if (coinLoop['Available'] > 0.0):
+                print colored("Available " + coin + " : " + str(coinLoop['Available']), "green")
+                return coinLoop['Available']
+    print colored("No " + coin + " available !", "red")
     return False
 
-def getBalance(token, crypto):
-    balance = token.get_balance(crypto)
-    if balance['success'] != True:
-        print "FATAL ERROR : " + balance['message']
-        return (None)
-    if balance['result'] is None:
-        return (0.0)
-    return (balance['result']['Balance'])
+def maxCoinBuy(availableBtc, pricePerCoin, buy_sell):
+    if buy_sell == 0:
+        units = availableBtc / pricePerCoin
+    elif buy_sell == 1:
+        units = availableBtc * pricePerCoin
+    feeInBtc = units * fee / 100
+    units = units - feeInBtc
+    return round(units, 8)
 
-def getMarket(token, name):
-    print "Fetching market " + name
-    results = token.get_market_summaries()
-    #print results
-    if results['success'] != True:
-        print "FATAL ERROR : " + results['message']
-        return (None)
-    for result in results['result']:
-        if result['MarketName'] == name:
-            return (result)
-    print "ERROR : Failed to fetch market"
-    return (None)
+def allIn(coinOfTheWeek, bittrexApi):
+    print "AllIn :"
+    btcBalance = checkAvailableCoin(bittrexApi, "BTC")
+    if btcBalance == False:
+        sys.exit(-1)
+    pricePerCoin = bittrexApi.get_marketsummary("BTC-" + coinOfTheWeek)['result'][0]['Ask']
+    maxCoin = maxCoinBuy(btcBalance, pricePerCoin, 0)
+    print "btcBalance = " + str(btcBalance)
+    print "pricePerCoin = " + str(pricePerCoin)
+    print colored("Trying to buy :" + str(round(maxCoin * pricePerCoin, 8)) + " ETH", "cyan")
+    #retBuy = bittrexApi.buy_limit("BTC-" + coinOfTheWeek, maxCoin, pricePerCoin)
+    #if retBuy['success'] == True:
+        #print colored("Order placed", "green")
+    #else:
+        #print colored (retBuy['message'], "red")
 
-def allOut(token, market, crypto_balance):
-    quantity = btc_balance / (market['Bid'] - market['Bid'] * safe_buyorsell_percentage / 100.0)
-    commission = quantity * market['Bid'] * commission_percentage / 100.0
-    print "Selling on " + market['MarketName'] + ", quantity = " + str(quantity) + ", price = " + str(market['Bid']) + ", commission = " + str(commission) + ", subtotal = " + str(quantity - commission)
-    quantity -= commission
-    sell = token.sell_limit(market['MaketName'], quantity, market['Bid'])
-    if sell['success'] != True:
-        print "FATAL ERROR : " + sell['message']
-        return (False)
-    for key in sell['result'].keys():
-        print str(key) + ": " + str(sell['result'][key])
-    return (True)
+def allOut(coinOfTheWeek, bittrexApi):
+    print "AllOut :"
+    coinBalance = checkAvailableCoin(bittrexApi, coinOfTheWeek)
+    if coinBalance == False:
+        sys.exit(-1)
+    pricePerCoin = bittrexApi.get_marketsummary("BTC-" + coinOfTheWeek)['result'][0]['Bid']
+    print "pricePerCoin = " + str(round(pricePerCoin, 8))
+    print "coinBalance = " + str(coinBalance)
+    maxCoin = maxCoinBuy(coinBalance, pricePerCoin, 1)
+    print "maxCoin = " + str(maxCoin)
+    #retBuy = bittrexApi.sell_limit("BTC-" + coinOfTheWeek, maxCoin, pricePerCoin)
+    #if retBuy['success'] == True:
+        #print colored("Order placed", "green")
+    #else:
+        #print colored (retBuy['message'], "red")
 
-def allIn(token, market, btc_balance):
-    quantity = btc_balance / (market['Ask'] + market['Ask'] * safe_buyorsell_percentage / 100.0)
-    commission = quantity * market['Ask'] * commission_percentage / 100.0
-    print "Buying on " + market['MarketName'] + ", quantity = " + str(quantity) + ", price = " + str(market['Ask']) + ", commission = " + str(commission) + ", subtotal = " + str(quantity - commission)
-    quantity -= commission
-    buy = token.buy_limit(market['MarketName'], quantity, market['Ask'])
-    if buy['success'] != True:
-        print "FATAL ERROR : " + buy['message']
-        return (False)
-    for key in buy['result'].keys():
-        print str(key) + ": " + str(buy['result'][key])
-    return (True)
-
-def getRich(coinOfTheWeek, bittrex_token):
-#   Init
-    btc_balance = 0.0
-    market = ""
-
-#   Body    
-    btc_balance = getBalance(bittrex_token, "BTC")
-    if btc_balance is None:
-        print colored("You have no BTC :'(, aborting", 'red')
-        return (False)
-    coinOfTheWeek_balance = getBalance(bittrex_token, coinOfTheWeek)
-    if coinOfTheWeek_balance is None:
-        coinOfTheWeek_balance = 0.0
-    print "You currently have " + str(coinOfTheWeek_balance) + " " + str(coinOfTheWeek) + " and " + str(btc_balance) + " BTC"
-    market = getMarket(bittrex_token, "BTC-" + coinOfTheWeek)
-    if market is None:
-        print("Market is None", 'red')
-        return
-    if allIn(bittrex_token, market, btc_balance) != True:
-        print("Failed to all in", 'red')
-    btc_balance = getBalance(bittrex_token, "BTC")
-    if btc_balance is None:
-        print("btc_balance is None", 'red')
-        return
-    coinOfTheWeek_balance = getBalance(bittrex_token, coinOfTheWeek)
-    if coinOfTheWeek_balance is None:
-        return
-    print ("You now have " + str(coinOfTheWeek_balance) + " " + str(coinOfTheWeek) + " and " + str(btc_balance) + " BTC")
-    while True:
-        if monitor(bittrex_token, market, coinOfTheWeek) != True:
-            print colored("Monitor failed, retrying", red)
-        else:
-            break
-        time.sleep(1)
+def getRich(coinOfTheWeek, bittrexApi):
+    allIn(coinOfTheWeek, bittrexApi)
+    #orders = bittrexApi.get_open_orders("BTC-" + coinOfTheWeek)
+    #while True:
+        #if orders['success'] == True and not orders['result']:
+            #print "No order\nSelling all " + coinOfTheWeek
+    allOut(coinOfTheWeek, bittrexApi)
+            #print "All coin as been selled"
+            #break
+        #else:
+            #print "Order not selled"
+        #time.sleep(1)

@@ -1,12 +1,7 @@
 import json
 
-dataMail = []
 dataTwitter = []
 dataBittrex = []
-
-def parseMail(data):
-    global dataMail
-    dataMail = data["Mail param"]
 
 def parseTwitter(data):
     global dataTwitter
@@ -18,6 +13,5 @@ def parseBittrex(data):
 
 def parseSecret():
     data = json.load(open('config.json'))
-    parseMail(data)
     parseTwitter(data)
     parseBittrex(data)
