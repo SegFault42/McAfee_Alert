@@ -1,30 +1,61 @@
-import requests
-import sys
+# -*- coding: utf8 -*-
+
+import parseJson
 import tweepy
+import json
+from bittrex.bittrex import Bittrex, API_V1_1
+import os
 import sys
+import re
+import time
+from termcolor import colored
 
-consumer_key = ""
-consumer_secret = ""
-access_token = ""
-access_token_secret = ""
-#twitter_account_sender = "" #without @
-#twitter_account_receiver = "" # without @
+import auth
+import image
+import parseJson as data
+import coinOfTheWeek as cotw
+import rich
 
-auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-auth.set_access_token(access_token, access_token_secret)
-api = tweepy.API(auth)
-
-def tweet_current_value(tweet):
-    try:
-        api.update_status(status=tweet)
-    except:
-        pass
+reload(sys)
+sys.setdefaultencoding('utf8')
+bittrex_api_version = API_V1_1
 
 def main():
-    #tweet_current_value("Hello world")
-    stuff = api.user_timeline(screen_name = '@officialmcafee', count = 1, include_rts = True)
-    for status in stuff:
-        print(status.text)
+    parseJson.parseSecret()
+    apiTwitter = auth.authentification()
+
+    while True:
+        try:
+            lastTweetFirst = apiTwitter.user_timeline(screen_name = data.dataTwitter['twitterAccount'], count = 1, include_rts = False)[0].text
+        except:
+            print colored('Getting last tweet error', 'red')
+            time.sleep(3)
+            continue
+        break
+    while True:
+        try:
+            lastTweet = apiTwitter.user_timeline(screen_name = data.dataTwitter['twitterAccount'], count = 1, include_rts = False)
+        except:
+            print colored('Getting last tweet error', 'red')
+            time.sleep(3)
+            continue
+        if lastTweet[0].text != lastTweetFirst and 'coin of the week' in lastTweet[0].text.lower() or lastTweet[0].text != lastTweetFirst and 'coin of the day' in lastTweet[0].text.lower():
+            lastTweetFirst = lastTweet[0].text
+            print colored('New tweet about coin of the week !!!', 'red')
+            mybittrex = Bittrex(data.dataBittrex['my_api_key'], data.dataBittrex['my_api_secret'], api_version=bittrex_api_version)
+            coinOfTheWeek = cotw.getCoinOfTheWeek(apiTwitter, mybittrex, lastTweet)
+            if coinOfTheWeek == False:
+                print colored('Coin not available in Bittrex :(', 'magenta')
+                continue
+            elif coinOfTheWeek == 2:
+                print colored('No media in tweet :(', 'magenta')
+                continue
+            print colored(coinOfTheWeek, 'magenta')
+            rich.getRich(coinOfTheWeek, mybittrex)
+        else:
+            print colored('Current tweet : ', 'green'), colored (lastTweet[0].text, 'yellow'), colored('\nWaiting for new tweet', 'green')
+        time.sleep(3)
+
 
 if __name__ == '__main__':
     main()

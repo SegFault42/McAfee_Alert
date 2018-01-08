@@ -1,0 +1,16 @@
+{
+	"Twitter param":
+    {
+		"consumer_key": "",
+		"consumer_secret": "",
+		"access_token": "",
+		"access_token_secret": "",
+		"twitterAccount": "@officialmcafee",
+		"twitterAccountReceiver": ""
+    },
+	"Bittrex param":
+    {
+		"my_api_key": "",
+		"my_api_secret": ""
+    }
+}
