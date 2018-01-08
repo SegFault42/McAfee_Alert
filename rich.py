@@ -22,6 +22,7 @@ from termcolor import colored
 
 fee = 0.25
 percentBuySecure = 10
+percentSell = 60
 
 def checkAvailableCoin(bittrexApi, coin):
     balances = bittrexApi.get_balances()
@@ -52,13 +53,15 @@ def allIn(coinOfTheWeek, bittrexApi):
     print "btcBalance = " + str(btcBalance)
     print "pricePerCoin = " + str(pricePerCoin)
     print colored("Trying to buy :" + str(round(maxCoin * pricePerCoin, 8)) + " ETH", "cyan")
-    #retBuy = bittrexApi.buy_limit("BTC-" + coinOfTheWeek, maxCoin, pricePerCoin)
-    #if retBuy['success'] == True:
-        #print colored("Order placed", "green")
-    #else:
-        #print colored (retBuy['message'], "red")
+    final_price = pricePerCoin #+ (pricePerCoin * percentBuySecure / 100)
+    retBuy = bittrexApi.buy_limit("BTC-" + coinOfTheWeek, maxCoin, final_price)
+    if retBuy['success'] == True:
+        print colored("Order placed", "green")
+    else:
+        print colored (retBuy['message'], "red")
+    return final_price
 
-def allOut(coinOfTheWeek, bittrexApi):
+def allOut(coinOfTheWeek, bittrexApi, buyingPrice):
     print "AllOut :"
     coinBalance = checkAvailableCoin(bittrexApi, coinOfTheWeek)
     if coinBalance == False:
@@ -68,20 +71,25 @@ def allOut(coinOfTheWeek, bittrexApi):
     print "coinBalance = " + str(coinBalance)
     maxCoin = maxCoinBuy(coinBalance, pricePerCoin, 1)
     print "maxCoin = " + str(maxCoin)
-    #retBuy = bittrexApi.sell_limit("BTC-" + coinOfTheWeek, maxCoin, pricePerCoin)
-    #if retBuy['success'] == True:
-        #print colored("Order placed", "green")
-    #else:
-        #print colored (retBuy['message'], "red")
+    final_price = buyingPrice + (buyingPrice * percentSell / 100)
+    print "final_price = " + str(final_price)
+    retBuy = bittrexApi.sell_limit("BTC-" + coinOfTheWeek, maxCoin, final_price)
+    if retBuy['success'] == True:
+        print colored("Order placed", "green")
+    else:
+        print colored (retBuy['message'], "red")
 
 def getRich(coinOfTheWeek, bittrexApi):
-    allIn(coinOfTheWeek, bittrexApi)
+    subprocess.call(["python2", "pump/pumpdump.py", "-o", "-b", "10", "-s", "60", "-c", coinOfTheWeek])
+    #buyingPrice = allIn(coinOfTheWeek, bittrexApi)
     #orders = bittrexApi.get_open_orders("BTC-" + coinOfTheWeek)
     #while True:
         #if orders['success'] == True and not orders['result']:
-            #print "No order\nSelling all " + coinOfTheWeek
-    allOut(coinOfTheWeek, bittrexApi)
-            #print "All coin as been selled"
+            #print "All BTC exchanged in " + coinOfTheWeek
+            #break ;
+    #buyingPrice = 0.06
+    #allOut(coinOfTheWeek, bittrexApi, buyingPrice)
+            #print "All coin has been selled"
             #break
         #else:
             #print "Order not selled"
