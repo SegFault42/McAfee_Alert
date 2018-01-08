@@ -39,7 +39,7 @@ def main():
             print colored('Getting last tweet error', 'red')
             time.sleep(3)
             continue
-        if lastTweet[0].text != lastTweetFirst and 'coin of the week' in lastTweet[0].text.lower() or lastTweet[0].text != lastTweetFirst and 'ico of the week' in lastTweet[0].text.lower():
+        if lastTweet[0].text != lastTweetFirst and 'coin of the week' in lastTweet[0].text.lower() or lastTweet[0].text != lastTweetFirst and 'coin of the day' in lastTweet[0].text.lower():
             lastTweetFirst = lastTweet[0].text
             print colored('New tweet about coin of the week !!!', 'red')
             mybittrex = Bittrex(data.dataBittrex['my_api_key'], data.dataBittrex['my_api_secret'], api_version=bittrex_api_version)

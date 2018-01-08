@@ -26,7 +26,7 @@ def epurContent(imageContent):
 
 def downloadImageFromTweet(apiTwitter, lastTweet):
     #print lastTweet
-    print json.dumps(lastTweet[0]._json, indent = 2)
+    #print json.dumps(lastTweet[0]._json, indent = 2)
     imgUrl = lastTweet[0]._json['extended_entities']['media'][0]['media_url']
     imageName = wget.download(imgUrl)
     print ""
